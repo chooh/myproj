@@ -20,3 +20,20 @@
 * Для работы с аргументами командной строки можешь использовать библиотеку [optparse-applicative](https://hackage.haskell.org/package/optparse-applicative).
 * Для конфигурационного файла можешь использовать YAML или Dhall.
 * Для запросов к OpenWeatherMap API можешь использовать [servant-client](https://hackage.haskell.org/package/servant-client) или поискать другие решения.
+
+# Stack
+
+    stack upgrade # до последней версии
+    stack new myproj # создаем проект
+
+Потом идем в myproj/package.yaml, добавляем сервант зависимостью в библиотеку нашего пакета так
+
+    library:
+      source-dirs: src
+      dependencies:
+      - servant
+
+и потом
+
+    cd myproj
+    stack build

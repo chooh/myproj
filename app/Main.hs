@@ -1,6 +1,7 @@
 module Main where
 
-import App
+-- FIXME пришлось сделать qualified чтобы не втащить функцию App.main от WeatherData
+import qualified App
 
 main :: IO ()
-main = run
+main = App.run
