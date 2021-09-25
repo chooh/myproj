@@ -15,12 +15,9 @@ import Servant
 import Servant.Client
 import System.Environment
 import System.IO
+import Control.Monad.IO.Class
 
 -- * api
-
-type ItemApi =
-  "item" :> Get '[JSON] [Item] :<|>
-  "item" :> Capture "itemId" Integer :> Get '[JSON] Item
 
 type WeatherAPI = "weather" :> QueryParam "q" CityName :> QueryParam "appid" APIkey :> Get '[JSON] WeatherData
 
@@ -68,17 +65,20 @@ instance FromJSON WeatherMain
 weatherApi :: Proxy WeatherAPI
 weatherApi = Proxy
 
-itemApi :: Proxy ItemApi
-itemApi = Proxy
+getCurrentWeatherClient = client weatherApi
 
-getCurrentWeather = client weatherApi
-getCurrentWeatherInLondon = getCurrentWeather (Just "London")
+--- FIXME Как бы так ещё сделать функцию, чтобы на вход был только город, а на выходе уже
+-- Either WeatherData:
+--getCurrentWeather` city = do
+  --manager <- newManager tlsManagerSettings
+  --appid <- lookupEnv "API_KEY"
+  --res <- runClientM (getCurrentWeatherClient (Just city ) appid) (mkClientEnv manager (BaseUrl Https "api.openweathermap.org" 443 "/data/2.5"))
 
 runQ = do
   manager <- newManager tlsManagerSettings
   -- FIXME читать переменные окружения надо где-то в другом месте
   appid <- lookupEnv "API_KEY"
-  res <- runClientM (getCurrentWeatherInLondon appid) (mkClientEnv manager (BaseUrl Https "api.openweathermap.org" 443 "/data/2.5"))
+  res <- runClientM (getCurrentWeatherClient (Just "London") appid) (mkClientEnv manager (BaseUrl Https "api.openweathermap.org" 443 "/data/2.5"))
   case res of
     Left err -> putStrLn $ "Error: " ++ show err
     Right (weather) -> do
@@ -96,36 +96,18 @@ run = do
   runSettings settings =<< mkApp
 
 mkApp :: IO Application
-mkApp = return $ serve itemApi server
+mkApp = return $ serve weatherApi server
 
-server :: Server ItemApi
+server :: Server WeatherAPI
 server =
-  getItems :<|>
-  getItemById
+  getCurrentWeatherServer
 
-getItems :: Handler [Item]
-getItems = return [exampleItem]
+getCurrentWeatherServer :: Maybe CityName -> Maybe APIkey -> Handler WeatherData
+getCurrentWeatherServer _ _ = do
+    filecontent <- liftIO (readFile "weather.json")
+    return (WeatherData filecontent)
 
-getItemById :: Integer -> Handler Item
-getItemById = \ case
-  0 -> return exampleItem
-  _ -> throwError err404
-
-exampleItem :: Item
-exampleItem = Item 0 "example item"
-
--- * item
-
-data Item
-  = Item {
-    itemId :: Integer,
-    itemText :: String
-  }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON Item
-instance FromJSON Item
-
-data a + b = Foo a b
-
-type X = Int + Bool
+--getCurrentWeatherServer city _ = do
+  --manager <- newManager tlsManagerSettings
+  --appid <- lookupEnv "API_KEY"
+  --runClientM (getCurrentWeatherClient city appid) (mkClientEnv manager (BaseUrl Https "api.openweathermap.org" 443 "/data/2.5"))
