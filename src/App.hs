@@ -103,11 +103,13 @@ server =
   getCurrentWeatherServer
 
 getCurrentWeatherServer :: Maybe CityName -> Maybe APIkey -> Handler WeatherData
-getCurrentWeatherServer _ _ = do
-    filecontent <- liftIO (readFile "weather.json")
-    return (WeatherData filecontent)
-
---getCurrentWeatherServer city _ = do
-  --manager <- newManager tlsManagerSettings
-  --appid <- lookupEnv "API_KEY"
-  --runClientM (getCurrentWeatherClient city appid) (mkClientEnv manager (BaseUrl Https "api.openweathermap.org" 443 "/data/2.5"))
+getCurrentWeatherServer city _ = do
+  manager <- liftIO $ newManager tlsManagerSettings
+  -- FIXME читать переменные окружения надо где-то в другом месте
+  appid <- liftIO $ lookupEnv "API_KEY"
+  res <- liftIO $ runClientM (getCurrentWeatherClient city appid) (mkClientEnv manager (BaseUrl Https "api.openweathermap.org" 443 "/data/2.5"))
+  case res of
+    Left err -> do
+      liftIO $ print err
+      throwError err500
+    Right weather -> return weather
